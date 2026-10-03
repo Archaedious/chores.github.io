@@ -104,7 +104,6 @@
 
   button:active { transform: scale(0.97); }
   button.secondary { background: #2C3E50; }
-  button.danger { background: var(--danger); }
 
   .progress-bar-wrap {
     background: #0D1B2A;
@@ -126,6 +125,17 @@
     color: var(--muted);
     margin-bottom: 10px;
   }
+
+  .sync-status {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    min-height: 1.2em;
+  }
+  .sync-status.saving { color: #F1C40F; }
+  .sync-status.saved { color: var(--success); }
+  .sync-status.error { color: var(--danger); }
 
   .section {
     background: var(--card);
@@ -176,7 +186,6 @@
   .who-badge.yuki { background: var(--yuki-bg); color: #9A4D0A; }
   .who-badge.everyone { background: var(--shared-bg); color: #7D6608; }
 
-  /* Day checkboxes row */
   .days-row {
     display: flex;
     flex-wrap: wrap;
@@ -228,7 +237,6 @@
 
   .day-check.done .day-label { color: var(--success); }
 
-  /* Single checkbox (for weekly items) */
   .single-check {
     display: flex;
     align-items: center;
@@ -322,6 +330,25 @@
     outline: 2px solid #fff;
   }
 
+  .setup-banner {
+    background: #3D2A00;
+    border: 1px solid #F1C40F;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    font-size: 0.9rem;
+    color: #F9E79F;
+    display: none;
+  }
+
+  .setup-banner.show { display: block; }
+  .setup-banner code {
+    background: #1A1A2E;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+
   @media (max-width: 480px) {
     .day-check { min-width: 38px; }
     .day-box { width: 28px; height: 28px; }
@@ -331,6 +358,10 @@
 </head>
 <body>
 <div class="container">
+
+  <div class="setup-banner" id="setupBanner">
+    <strong>Setup needed:</strong> Paste your Firebase config values into the script (see instructions). Then re-upload this file to GitHub Pages.
+  </div>
 
   <header>
     <h1>🏠 House Chore Chart</h1>
@@ -345,6 +376,7 @@
     </div>
   </header>
 
+  <div class="sync-status" id="syncStatus">Connecting…</div>
   <div class="progress-text" id="progressText">0 of 0 complete</div>
   <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
 
@@ -368,12 +400,30 @@
 
   <footer>
     3-week rotation • Week 1 started Oct 4, 2026<br>
-    Checks are saved on this device
+    Checks sync in real-time across devices via Firebase
   </footer>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+
 <script>
-// ========== CONFIG ==========
+// ============================================================
+//  PASTE YOUR FIREBASE CONFIG HERE
+//  (from Firebase Console → Project settings → Your apps)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAP2YxAvhQ5atWDxDBSawr2NBQhAOzbZN8",
+  authDomain: "house-chores-4816d.firebaseapp.com",
+  databaseURL: "https://house-chores-4816d-default-rtdb.firebaseio.com",
+  projectId: "house-chores-4816d",
+  storageBucket: "house-chores-4816d.firebasestorage.app",
+  messagingSenderId: "352343281320",
+  appId: "1:352343281320:web:617a76c58afc1262d1bc9d"
+};
+// ============================================================
+
 const START_DATE = new Date(2026, 9, 4); // Oct 4, 2026
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -384,26 +434,18 @@ const WEEK_MAP = {
   3: { A: "Yuki", B: "Mike", C: "Malani", yard: "Yuki" },
 };
 
-// Chores with multi-day checkboxes
-// days: array of day keys that get a checkbox
 const MULTI_DAY_CHORES = [
-  // Daily
   { id: "litter_scoop", name: "Scoop litter box", section: "Daily", role: "A", days: ["sun","mon","tue","wed","thu","fri","sat"] },
   { id: "dog_am", name: "Feed dog – Morning", section: "Daily", role: "B", days: ["sun","mon","tue","wed","thu","fri","sat"] },
   { id: "dog_pm", name: "Feed dog – Evening", section: "Daily", role: "C", days: ["sun","mon","tue","wed","thu","fri","sat"] },
   { id: "no_dishes", name: "No dishes left in sink / clear kitchen", section: "Daily", role: "Everyone", days: ["sun","mon","tue","wed","thu","fri","sat"] },
-
-  // Dishes
   { id: "dishes_a", name: "Dishes (wash + put away)", section: "Dishes", role: "A", days: ["mon","wed","fri"] },
   { id: "dishes_b", name: "Dishes (wash + put away)", section: "Dishes", role: "B", days: ["tue","thu","sat"] },
   { id: "dishes_c", name: "Dishes (wash + put away)", section: "Dishes", role: "C", days: ["sun"] },
-
-  // Twice Weekly
   { id: "feeder", name: "Top off cat feeder", section: "Twice Weekly", role: "B", days: ["tue","fri"] },
   { id: "sweep", name: "Sweep all floors", section: "Twice Weekly", role: "C", days: ["wed","sat"] },
 ];
 
-// Single-checkbox chores (weekly / trash)
 const SINGLE_CHORES = [
   { id: "trash_sun", name: "Trash to curb", section: "Trash", role: "A", note: "Sunday night" },
   { id: "trash_wed", name: "Trash + Recycling to curb", section: "Trash", role: "B", note: "Wednesday night" },
@@ -422,8 +464,26 @@ const SECTION_ORDER = ["Daily", "Dishes", "Twice Weekly", "Trash", "Weekly"];
 let manualWeek = 0;
 let currentWeekNum = 1;
 let checked = {};
+let db = null;
+let isConfigured = firebaseConfig.apiKey !== "PASTE_API_KEY_HERE";
 
-// ========== HELPERS ==========
+function makeKey(weekNum, choreId, dayKey) {
+  return dayKey ? `w${weekNum}_${choreId}_${dayKey}` : `w${weekNum}_${choreId}`;
+}
+
+function personClass(name) {
+  if (name === "Mike") return "mike";
+  if (name === "Malani") return "malani";
+  if (name === "Yuki") return "yuki";
+  return "everyone";
+}
+
+function resolveWho(role, roles) {
+  if (role === "Everyone") return "Everyone";
+  if (role === "yard") return roles.yard;
+  return roles[role];
+}
+
 function getWeekNumber(date = new Date()) {
   const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
   const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -445,45 +505,50 @@ function getWeekDateRange(weekNum, refDate = new Date()) {
   return weekStart.toLocaleDateString("en-US", opts) + " – " + weekEnd.toLocaleDateString("en-US", opts);
 }
 
-function storageKey(weekNum, choreId, dayKey) {
-  return dayKey ? `chore_w${weekNum}_${choreId}_${dayKey}` : `chore_w${weekNum}_${choreId}`;
+function setSyncStatus(msg, cls) {
+  const el = document.getElementById("syncStatus");
+  el.textContent = msg;
+  el.className = "sync-status " + (cls || "");
 }
 
-function loadChecked() {
-  checked = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("chore_w")) {
-      checked[key] = localStorage.getItem(key) === "1";
-    }
+// ========== FIREBASE ==========
+function initFirebase() {
+  if (!isConfigured) {
+    document.getElementById("setupBanner").classList.add("show");
+    setSyncStatus("Setup required", "error");
+    render();
+    return;
+  }
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+    // Real-time listener
+    db.ref("checks").on("value", (snapshot) => {
+      checked = snapshot.val() || {};
+      setSyncStatus("Live ✓", "saved");
+      setTimeout(() => setSyncStatus(""), 2500);
+      render();
+    }, (err) => {
+      console.error(err);
+      setSyncStatus("Connection error – check Firebase rules", "error");
+    });
+
+  } catch (err) {
+    console.error(err);
+    setSyncStatus("Firebase init failed – check config", "error");
+    render();
   }
 }
 
 function saveCheck(key, value) {
+  if (!db) return;
   if (value) {
-    localStorage.setItem(key, "1");
-    checked[key] = true;
+    db.ref("checks/" + key).set(true);
   } else {
-    localStorage.removeItem(key);
-    delete checked[key];
+    db.ref("checks/" + key).remove();
   }
-}
-
-function isChecked(key) {
-  return !!checked[key];
-}
-
-function personClass(name) {
-  if (name === "Mike") return "mike";
-  if (name === "Malani") return "malani";
-  if (name === "Yuki") return "yuki";
-  return "everyone";
-}
-
-function resolveWho(role, roles) {
-  if (role === "Everyone") return "Everyone";
-  if (role === "yard") return roles.yard;
-  return roles[role];
 }
 
 // ========== RENDER ==========
@@ -505,14 +570,12 @@ function render() {
   if (manualWeek === 0) document.getElementById("btnAuto").classList.add("active");
   else document.getElementById("btnW" + manualWeek).classList.add("active");
 
-  // Group by section
   const sections = {};
   SECTION_ORDER.forEach(s => sections[s] = []);
 
   MULTI_DAY_CHORES.forEach(c => {
     sections[c.section].push({ type: "multi", ...c, who: resolveWho(c.role, roles) });
   });
-
   SINGLE_CHORES.forEach(c => {
     sections[c.section].push({ type: "single", ...c, who: resolveWho(c.role, roles) });
   });
@@ -529,11 +592,10 @@ function render() {
 
     items.forEach(chore => {
       if (chore.type === "multi") {
-        // Multi-day checkboxes
         let dayHtml = "";
         chore.days.forEach(dk => {
-          const key = storageKey(currentWeekNum, chore.id, dk);
-          const isDone = isChecked(key);
+          const key = makeKey(currentWeekNum, chore.id, dk);
+          const isDone = !!checked[key];
           total++;
           if (isDone) done++;
           const dayLabel = DAYS[DAY_KEYS.indexOf(dk)];
@@ -543,7 +605,6 @@ function render() {
               <div class="day-label">${dayLabel}</div>
             </div>`;
         });
-
         html += `
           <li class="chore-item">
             <div class="chore-top">
@@ -554,12 +615,10 @@ function render() {
             <div class="days-row">${dayHtml}</div>
           </li>`;
       } else {
-        // Single checkbox
-        const key = storageKey(currentWeekNum, chore.id);
-        const isDone = isChecked(key);
+        const key = makeKey(currentWeekNum, chore.id);
+        const isDone = !!checked[key];
         total++;
         if (isDone) done++;
-
         html += `
           <li class="chore-item">
             <div class="single-check ${isDone ? "done" : ""}" onclick="toggleSingle('${chore.id}')">
@@ -574,7 +633,6 @@ function render() {
           </li>`;
       }
     });
-
     html += `</ul></div>`;
   });
 
@@ -587,28 +645,35 @@ function render() {
 
 function toggleDay(choreId, dayKey, evt) {
   if (evt) evt.stopPropagation();
-  const key = storageKey(currentWeekNum, choreId, dayKey);
-  saveCheck(key, !isChecked(key));
+  const key = makeKey(currentWeekNum, choreId, dayKey);
+  const newVal = !checked[key];
+  if (newVal) checked[key] = true;
+  else delete checked[key];
   render();
+  saveCheck(key, newVal);
 }
 
 function toggleSingle(choreId) {
-  const key = storageKey(currentWeekNum, choreId);
-  saveCheck(key, !isChecked(key));
+  const key = makeKey(currentWeekNum, choreId);
+  const newVal = !checked[key];
+  if (newVal) checked[key] = true;
+  else delete checked[key];
   render();
+  saveCheck(key, newVal);
 }
 
 function resetCurrentWeek() {
-  if (!confirm("Clear all checkmarks for this week?")) return;
-  const prefix = `chore_w${currentWeekNum}_`;
-  const toRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith(prefix)) toRemove.push(key);
-  }
-  toRemove.forEach(k => localStorage.removeItem(k));
-  loadChecked();
+  if (!confirm("Clear all checkmarks for this week on all devices?")) return;
+  const prefix = `w${currentWeekNum}_`;
+  const updates = {};
+  Object.keys(checked).forEach(k => {
+    if (k.startsWith(prefix)) {
+      updates[k] = null; // null deletes the key in Firebase
+      delete checked[k];
+    }
+  });
   render();
+  if (db) db.ref("checks").update(updates);
 }
 
 function setManualWeek(w) {
@@ -617,10 +682,7 @@ function setManualWeek(w) {
 }
 
 // Init
-loadChecked();
-render();
-
-setInterval(() => { if (manualWeek === 0) render(); }, 60 * 60 * 1000);
+initFirebase();
 </script>
 </body>
 </html>
