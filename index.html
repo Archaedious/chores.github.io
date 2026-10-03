@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>House Chore Chart — Mike, Malani & Yuki</title>
+<style>
+  :root {
+    --mike: #4A90D9;
+    --mike-bg: #D6EAF8;
+    --malani: #27AE60;
+    --malani-bg: #D5F5E3;
+    --yuki: #E67E22;
+    --yuki-bg: #FDEBD0;
+    --shared: #F1C40F;
+    --shared-bg: #FEF9E7;
+    --bg: #1A1A2E;
+    --card: #16213E;
+    --text: #EAEAEA;
+    --muted: #A0A0B0;
+    --accent: #0F3460;
+    --success: #2ECC71;
+    --danger: #E74C3C;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 12px;
+    line-height: 1.4;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  header {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 6px;
+    color: #fff;
+  }
+
+  .week-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    padding: 8px 24px;
+    border-radius: 30px;
+    margin: 8px 0;
+  }
+
+  .date-range {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .roles {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .role-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .role-chip.mike { background: var(--mike-bg); color: #1A5276; }
+  .role-chip.malani { background: var(--malani-bg); color: #145A32; }
+  .role-chip.yuki { background: var(--yuki-bg); color: #9A4D0A; }
+  .role-chip.yard { background: var(--shared-bg); color: #7D6608; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 48px;
+    min-width: 120px;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  button:active { transform: scale(0.97); }
+  button.secondary { background: #2C3E50; }
+  button.danger { background: var(--danger); }
+  button:hover { filter: brightness(1.1); }
+
+  /* Progress */
+  .progress-bar-wrap {
+    background: #0D1B2A;
+    border-radius: 10px;
+    height: 14px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success), #27AE60);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 10px;
+  }
+  .progress-text {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Chore sections */
+  .section {
+    background: var(--card);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+
+  .section-header {
+    background: var(--accent);
+    padding: 12px 16px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chore-list { list-style: none; }
+
+  .chore-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 14px;
+    min-height: 64px;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+  }
+
+  .chore-item:last-child { border-bottom: none; }
+  .chore-item:active { background: rgba(255,255,255,0.05); }
+  .chore-item.done { opacity: 0.55; }
+  .chore-item.done .chore-name { text-decoration: line-through; }
+
+  /* Custom checkbox - large for touch */
+  .checkbox {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border: 3px solid #5D6D7E;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: transparent;
+    transition: all 0.15s;
+    background: #0D1B2A;
+  }
+
+  .chore-item.done .checkbox {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+
+  .chore-info { flex: 1; }
+
+  .chore-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .chore-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .who-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  .who-badge.mike { background: var(--mike-bg); color: #1A5276; }
+  .who-badge.malani { background: var(--malani-bg); color: #145A32; }
+  .who-badge.yuki { background: var(--yuki-bg); color: #9A4D0A; }
+  .who-badge.everyone { background: var(--shared-bg); color: #7D6608; }
+
+  /* Always rules */
+  .rules {
+    background: #2C1A1A;
+    border: 1px solid #5D2A2A;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    margin-bottom: 20px;
+  }
+
+  .rules h3 {
+    color: #E74C3C;
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
+  .rules ul {
+    list-style: none;
+    font-size: 0.9rem;
+    color: #E0C0C0;
+  }
+
+  .rules li {
+    padding: 4px 0;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .rules li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #E74C3C;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 16px 0 30px;
+  }
+
+  /* Manual week override */
+  .week-picker {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .week-picker button {
+    min-width: 70px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    background: #2C3E50;
+  }
+
+  .week-picker button.active {
+    background: var(--accent);
+    outline: 2px solid #fff;
+  }
+
+  /* Responsive for smaller Echo Show */
+  @media (max-width: 500px) {
+    header h1 { font-size: 1.25rem; }
+    .week-badge { font-size: 1.1rem; padding: 6px 18px; }
+    .chore-name { font-size: 0.95rem; }
+    .checkbox { width: 32px; height: 32px; min-width: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🏠 House Chore Chart</h1>
+    <div class="week-badge" id="weekBadge">Week 1</div>
+    <div class="date-range" id="dateRange">Loading...</div>
+    <div class="roles" id="rolesRow"></div>
+    <div class="week-picker">
+      <button onclick="setManualWeek(1)" id="btnW1">W1</button>
+      <button onclick="setManualWeek(2)" id="btnW2">W2</button>
+      <button onclick="setManualWeek(3)" id="btnW3">W3</button>
+      <button onclick="setManualWeek(0)" id="btnAuto" class="active">Auto</button>
+    </div>
+  </header>
+
+  <div class="progress-text" id="progressText">0 of 0 complete</div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+
+  <div class="controls">
+    <button onclick="resetCurrentWeek()">Reset This Week</button>
+    <button class="secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">Top</button>
+  </div>
+
+  <div id="choreContainer"></div>
+
+  <div class="rules">
+    <h3>⚠️ Always Rules (never rotate)</h3>
+    <ul>
+      <li>No dishes left in the sink at any time</li>
+      <li>Shoes never block doorways or stairs</li>
+      <li>No food or drinks left overnight in rooms</li>
+      <li>Trash (cans, cartons, pizza boxes, leftovers) thrown away immediately</li>
+      <li>Laundry: white baskets = clean; other baskets = dirty; keep clothes in your own room</li>
+    </ul>
+  </div>
+
+  <footer>
+    3-week rotation • Week 1 started Oct 4, 2026<br>
+    Checks are saved on this device
+  </footer>
+</div>
+
+<script>
+// ========== CONFIG ==========
+const START_DATE = new Date(2026, 9, 4); // Oct 4, 2026 (month is 0-indexed)
+const PEOPLE = ["Mike", "Malani", "Yuki"];
+
+// Role definitions (who does what when they have that role)
+const ROLE_CHORES = {
+  A: [
+    { id: "litter_scoop", name: "Scoop litter box", freq: "Every day", section: "Daily" },
+    { id: "dishes_mwf", name: "Dishes (wash + put away)", freq: "Mon / Wed / Fri", section: "Dishes" },
+    { id: "trash_sun", name: "Trash to curb", freq: "Sunday night", section: "Trash" },
+    { id: "litter_full", name: "Full litter box clean", freq: "Sunday", section: "Weekly" },
+    { id: "cat_room", name: "Clean cat room (floors + litter mat)", freq: "Sunday", section: "Weekly" },
+  ],
+  B: [
+    { id: "dog_am", name: "Feed dog – Morning", freq: "Every day", section: "Daily" },
+    { id: "dishes_tts", name: "Dishes (wash + put away)", freq: "Tue / Thu / Sat", section: "Dishes" },
+    { id: "feeder", name: "Top off cat feeder", freq: "Tue & Fri", section: "Twice Weekly" },
+    { id: "trash_wed", name: "Trash + Recycling to curb", freq: "Wednesday night", section: "Trash" },
+    { id: "mop", name: "Mop all floors", freq: "Saturday", section: "Weekly" },
+    { id: "garage", name: "Clean garage (Mom can park)", freq: "This week", section: "Weekly" },
+  ],
+  C: [
+    { id: "dog_pm", name: "Feed dog – Evening", freq: "Every day", section: "Daily" },
+    { id: "dishes_sun", name: "Dishes (wash + put away)", freq: "Sunday", section: "Dishes" },
+    { id: "sweep", name: "Sweep all floors", freq: "Wed & Sat", section: "Twice Weekly" },
+    { id: "water", name: "Clean & refill water bowl", freq: "Sunday (or sooner)", section: "Weekly" },
+    { id: "vacuum", name: "Vacuum stairs + upstairs carpets", freq: "Saturday", section: "Weekly" },
+  ]
+};
+
+const SHARED_CHORES = [
+  { id: "no_dishes", name: "No dishes left in sink / clear kitchen", freq: "Always", section: "Daily", who: "Everyone" },
+];
+
+// Week → who has which role + yard
+const WEEK_MAP = {
+  1: { A: "Mike", B: "Malani", C: "Yuki", yard: "Mike" },
+  2: { A: "Malani", B: "Yuki", C: "Mike", yard: "Malani" },
+  3: { A: "Yuki", B: "Mike", C: "Malani", yard: "Yuki" },
+};
+
+// ========== STATE ==========
+let manualWeek = 0; // 0 = auto
+let currentWeekNum = 1;
+let checked = {}; // key: weekNum_choreId → true
+
+// ========== HELPERS ==========
+function getWeekNumber(date = new Date()) {
+  // Normalize both to local midnight
+  const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffMs = today - start;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 1; // before start → Week 1
+  const weekIndex = Math.floor(diffDays / 7) % 3;
+  return weekIndex + 1;
+}
+
+function getWeekDateRange(weekNum, refDate = new Date()) {
+  const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+  const today = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+  const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  const cycleStartOffset = Math.floor(Math.max(0, diffDays) / 21) * 21;
+  const weekStartOffset = cycleStartOffset + (weekNum - 1) * 7;
+  const weekStart = new Date(start);
+  weekStart.setDate(start.getDate() + weekStartOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
+  const opts = { month: "short", day: "numeric" };
+  return weekStart.toLocaleDateString("en-US", opts) + " – " + weekEnd.toLocaleDateString("en-US", opts);
+}
+
+function storageKey(weekNum, choreId) {
+  return `chore_w${weekNum}_${choreId}`;
+}
+
+function loadChecked() {
+  checked = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("chore_w")) {
+      checked[key] = localStorage.getItem(key) === "1";
+    }
+  }
+}
+
+function saveCheck(weekNum, choreId, value) {
+  const key = storageKey(weekNum, choreId);
+  if (value) {
+    localStorage.setItem(key, "1");
+    checked[key] = true;
+  } else {
+    localStorage.removeItem(key);
+    delete checked[key];
+  }
+}
+
+function isChecked(weekNum, choreId) {
+  return !!checked[storageKey(weekNum, choreId)];
+}
+
+function personClass(name) {
+  if (name === "Mike") return "mike";
+  if (name === "Malani") return "malani";
+  if (name === "Yuki") return "yuki";
+  return "everyone";
+}
+
+// ========== RENDER ==========
+function render() {
+  currentWeekNum = manualWeek === 0 ? getWeekNumber() : manualWeek;
+  const roles = WEEK_MAP[currentWeekNum];
+
+  // Header
+  document.getElementById("weekBadge").textContent = `Week ${currentWeekNum}`;
+  document.getElementById("dateRange").textContent = getWeekDateRange(currentWeekNum);
+
+  document.getElementById("rolesRow").innerHTML = `
+    <span class="role-chip ${personClass(roles.A)}">${roles.A} = Role A</span>
+    <span class="role-chip ${personClass(roles.B)}">${roles.B} = Role B</span>
+    <span class="role-chip ${personClass(roles.C)}">${roles.C} = Role C</span>
+    <span class="role-chip yard">Yard: ${roles.yard}</span>
+  `;
+
+  // Week picker buttons
+  ["btnW1","btnW2","btnW3","btnAuto"].forEach(id => document.getElementById(id).classList.remove("active"));
+  if (manualWeek === 0) document.getElementById("btnAuto").classList.add("active");
+  else document.getElementById("btnW" + manualWeek).classList.add("active");
+
+  // Build chore list grouped by section
+  const sections = {};
+  const order = ["Daily", "Dishes", "Twice Weekly", "Trash", "Weekly"];
+
+  function addChore(chore, who) {
+    const sec = chore.section;
+    if (!sections[sec]) sections[sec] = [];
+    sections[sec].push({ ...chore, who });
+  }
+
+  // Role A/B/C chores
+  ROLE_CHORES.A.forEach(c => addChore(c, roles.A));
+  ROLE_CHORES.B.forEach(c => addChore(c, roles.B));
+  ROLE_CHORES.C.forEach(c => addChore(c, roles.C));
+
+  // Shared
+  SHARED_CHORES.forEach(c => addChore(c, c.who));
+
+  // Yard (special)
+  addChore({ id: "yard", name: "Yard: Mow / Edge / String trim + Weeds", freq: "This week (Saturday preferred)", section: "Weekly" }, roles.yard);
+
+  // Render
+  let html = "";
+  let total = 0;
+  let done = 0;
+
+  order.forEach(secName => {
+    if (!sections[secName]) return;
+    html += `<div class="section"><div class="section-header">${secName}</div><ul class="chore-list">`;
+
+    sections[secName].forEach(chore => {
+      total++;
+      const checkedNow = isChecked(currentWeekNum, chore.id);
+      if (checkedNow) done++;
+      const cls = checkedNow ? "chore-item done" : "chore-item";
+      html += `
+        <li class="${cls}" onclick="toggleChore('${chore.id}')" data-id="${chore.id}">
+          <div class="checkbox">${checkedNow ? "✓" : ""}</div>
+          <div class="chore-info">
+            <div class="chore-name">${chore.name}
+              <span class="who-badge ${personClass(chore.who)}">${chore.who}</span>
+            </div>
+            <div class="chore-meta">${chore.freq}</div>
+          </div>
+        </li>`;
+    });
+
+    html += `</ul></div>`;
+  });
+
+  document.getElementById("choreContainer").innerHTML = html;
+
+  // Progress
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  document.getElementById("progressBar").style.width = pct + "%";
+  document.getElementById("progressText").textContent = `${done} of ${total} complete (${pct}%)`;
+}
+
+function toggleChore(id) {
+  const currently = isChecked(currentWeekNum, id);
+  saveCheck(currentWeekNum, id, !currently);
+  render();
+}
+
+function resetCurrentWeek() {
+  if (!confirm("Clear all checkmarks for this week?")) return;
+  // Remove all keys for current week
+  const prefix = `chore_w${currentWeekNum}_`;
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(prefix)) toRemove.push(key);
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+  loadChecked();
+  render();
+}
+
+function setManualWeek(w) {
+  manualWeek = w;
+  render();
+}
+
+// Init
+loadChecked();
+render();
+
+// Optional: refresh week at midnight
+setInterval(() => {
+  if (manualWeek === 0) render();
+}, 60 * 60 * 1000); // every hour is enough
+</script>
+</body>
+</html>
